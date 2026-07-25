@@ -22,7 +22,10 @@ const FIM_LANGUAGES_WITH_END = new Set([
 function maybeNewlineSuffix(suffix: string, lang: string): string {
     if (suffix.length === 0) return '\n';
     if (FIM_LANGUAGES_WITH_END.has(lang.toLowerCase())) return suffix;
-    return suffix;
+    // ponytail: append (only if missing) a trailing newline so the FIM model
+    // sees the current statement as closed; without this, languages like JS
+    // tend to continue the previous line instead of producing a new completion.
+    return suffix.endsWith('\n') ? suffix : suffix + '\n';
 }
 
 // https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B — FIM tokens are first-class
