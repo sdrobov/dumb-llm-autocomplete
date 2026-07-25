@@ -1,0 +1,142 @@
+{
+  "name": "dumb-llm-autocomplete",
+  "displayName": "Dumb LLM autocomplete",
+  "description": "AI-powered inline code completions via any OpenAI-compatible API.",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "AI"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "*"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Dumb LLM autocomplete",
+      "type": "object",
+      "properties": {
+        "dumbLlmAutocomplete.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable inline completions."
+        },
+        "dumbLlmAutocomplete.apiEndpoint": {
+          "type": "string",
+          "default": "",
+          "description": "Base URL of the server. The right path is appended automatically based on apiStyle: /v1/chat/completions for chat, /api/generate for ollama-native. Examples: http://localhost:11434, https://api.openai.com, http://localhost:1234. Legacy full-path values still work."
+        },
+        "dumbLlmAutocomplete.model": {
+          "type": "string",
+          "default": "gpt-3.5-turbo",
+          "description": "Model identifier to send in the request."
+        },
+        "dumbLlmAutocomplete.maxTokens": {
+          "type": "number",
+          "default": 256,
+          "minimum": 1,
+          "description": "Maximum number of tokens to generate."
+        },
+        "dumbLlmAutocomplete.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Sampling temperature."
+        },
+        "dumbLlmAutocomplete.debounceMs": {
+          "type": "number",
+          "default": 750,
+          "minimum": 0,
+          "description": "Delay before sending a request. Only the latest call after a typing burst reaches the API."
+        },
+        "dumbLlmAutocomplete.contextLines": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "description": "Lines of context before and after the cursor included in the prompt."
+        },
+        "dumbLlmAutocomplete.timeoutMs": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 0,
+          "description": "HTTP request timeout in milliseconds."
+        },
+        "dumbLlmAutocomplete.maxPromptTokens": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 200,
+          "description": "Soft cap on prompt size in tokens. Prefix/suffix are pruned to fit."
+        },
+        "dumbLlmAutocomplete.multiline": {
+          "type": "string",
+          "enum": ["always", "never", "auto"],
+          "default": "auto",
+          "description": "When to ask the model for a multi-line completion. 'auto' skips mid-expression (e.g. after '.' or '(') and only asks multi-line at the start of a statement."
+        },
+        "dumbLlmAutocomplete.useCache": {
+          "type": "boolean",
+          "default": true,
+          "description": "Cache completions to SQLite by file prefix. Speeds up re-requests when the user types the start of an earlier completion."
+        },
+        "dumbLlmAutocomplete.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Log every completion to the 'Dumb LLM autocomplete' output channel (language, multiline, snippet). Useful for diagnosing 'no completion shows up' issues."
+        },
+        "dumbLlmAutocomplete.apiStyle": {
+          "type": "string",
+          "enum": ["openai-compatible", "ollama-native"],
+          "default": "openai-compatible",
+          "description": "Appends either `/v1/chat/completions` (openai-compatible, default) or `/api/generate` (ollama-native) to apiEndpoint. `ollama-native` is required for FIM tokens on Ollama-served models like qwen2.5-coder — the OpenAI-compat endpoint ignores FIM markers."
+        },
+        "dumbLlmAutocomplete.systemPrompt": {
+          "type": "string",
+          "default": "You are an autocomplete engine.\n\nComplete the code at the cursor.\n\nReturn only the text to insert.\n\nDo not explain.\n\nDo not repeat existing code.\n\nDo not wrap in markdown.\n\nKeep the completion minimal.\n\nPreserve formatting.",
+          "description": "System prompt sent with every request."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "dumbLlmAutocomplete.setApiKey",
+        "title": "Set API Key",
+        "category": "Dumb LLM autocomplete"
+      },
+      {
+        "command": "dumbLlmAutocomplete.clearApiKey",
+        "title": "Clear API Key",
+        "category": "Dumb LLM autocomplete"
+      },
+      {
+        "command": "dumbLlmAutocomplete.toggleEnabled",
+        "title": "Toggle Autocomplete",
+        "category": "Dumb LLM autocomplete"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -p . --watch",
+    "package": "vsce package",
+    "lint": "tsc --noEmit",
+    "smoke": "tsc -p test && node out_test/test/smoke.js",
+    "dev": "./scripts/dev.sh",
+    "dev:build": "./scripts/dev.sh --no-launch"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.1",
+    "diff": "^9.0.0"
+  }
+}
