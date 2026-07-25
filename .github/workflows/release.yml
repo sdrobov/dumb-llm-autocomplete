@@ -1,0 +1,37 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npx --yes @vscode/vsce package
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: "*.vsix"
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: "*.vsix"
+          generate_release_notes: true
