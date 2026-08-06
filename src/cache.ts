@@ -1,4 +1,3 @@
-import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -9,7 +8,7 @@ interface Entry {
 }
 
 const CAPACITY = 1000;
-const MAX_KEY_LEN = 200; // sqlite LIKE pattern safety
+const MAX_KEY_LEN = 200; // keeps keys bounded so the cache file stays small
 
 function safeKey(prefix: string): string {
     return prefix.length > MAX_KEY_LEN ? prefix.slice(-MAX_KEY_LEN) : prefix;
@@ -17,41 +16,60 @@ function safeKey(prefix: string): string {
 
 export class LruCache {
     private static instance: LruCache | undefined;
-    private db: Database.Database;
+    private filePath: string;
     private map = new Map<string, Entry>();
 
-    private constructor(db: Database.Database) {
-        this.db = db;
+    private constructor(filePath: string) {
+        this.filePath = filePath;
         this.loadAll();
+    }
+
+    /** Open a cache instance backed by a specific JSON file. Used by tests and the singleton. */
+    static openAt(filePath: string): LruCache {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        return new LruCache(filePath);
     }
 
     static get(): LruCache {
         if (!LruCache.instance) {
             const dir = path.join(os.homedir(), '.dumb-llm-autocomplete');
-            fs.mkdirSync(dir, { recursive: true });
-            const dbPath = path.join(dir, 'cache.sqlite');
-            const db = new Database(dbPath);
-            db.exec(`
-                CREATE TABLE IF NOT EXISTS cache (
-                    key TEXT PRIMARY KEY,
-                    value TEXT NOT NULL,
-                    timestamp INTEGER NOT NULL
-                )
-            `);
-            LruCache.instance = new LruCache(db);
+            LruCache.instance = LruCache.openAt(path.join(dir, 'cache.json'));
         }
         return LruCache.instance;
     }
 
-    private loadAll(): void {
-        const rows = this.db.prepare('SELECT key, value, timestamp FROM cache').all() as Array<{
-            key: string;
-            value: string;
-            timestamp: number;
-        }>;
-        for (const row of rows) {
-            this.map.set(row.key, { value: row.value, timestamp: row.timestamp });
+    /** Test helper: clear the singleton so the next `get()` opens a fresh cache. */
+    static resetForTests(): void {
+        if (LruCache.instance) {
+            try { LruCache.instance.close(); } catch { /* ignore */ }
         }
+        LruCache.instance = undefined;
+    }
+
+    private loadAll(): void {
+        let raw: string;
+        try {
+            raw = fs.readFileSync(this.filePath, 'utf8');
+        } catch {
+            return; // no cache file yet → start empty
+        }
+        try {
+            const rows = JSON.parse(raw) as Array<[string, Entry]>;
+            for (const [key, entry] of rows) {
+                this.map.set(key, entry);
+            }
+        } catch {
+            // corrupt cache file → start empty; the next put overwrites it
+            this.map.clear();
+        }
+    }
+
+    // ponytail: full-file rewrite per put; fine at ≤1000 entries, becomes a
+    // perf issue only if completions grow huge — switch to append-only log then.
+    private persist(): void {
+        const tmp = this.filePath + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify([...this.map.entries()]));
+        fs.renameSync(tmp, this.filePath);
     }
 
     /** Longest-prefix match: returns completion starting at the remaining chars after the matched key. */
@@ -88,16 +106,13 @@ export class LruCache {
             }
             if (oldestKey) {
                 this.map.delete(oldestKey);
-                this.db.prepare('DELETE FROM cache WHERE key = ?').run(oldestKey);
             }
         }
-        this.db.prepare(
-            `INSERT INTO cache (key, value, timestamp) VALUES (?, ?, ?)
-             ON CONFLICT(key) DO UPDATE SET value = ?, timestamp = ?`,
-        ).run(key, completion, now, completion, now);
+        this.persist();
     }
 
     close(): void {
-        this.db.close();
+        this.persist();
+        this.map.clear();
     }
 }

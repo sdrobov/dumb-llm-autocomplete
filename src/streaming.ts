@@ -3,6 +3,9 @@ import type * as vscode from 'vscode';
 import type { Config } from './config';
 import type { PreparedPrompt } from './prompt';
 
+// Internal pipeline pieces below are `export`ed only so unit tests
+// (test/unit/streaming.*.test.ts) can import them — not public API.
+
 // ponytail: FIM/chat models wrap the answer in ```fence```. The opening fence
 // appears FIRST, before any real content — stopping on it drops the whole answer.
 // Track whether we've yielded anything meaningful; only stop on a fence AFTER that.
@@ -36,7 +39,7 @@ export async function* streamCompletion(
     yield* streamChat(cfg, apiKey, prepared);
 }
 
-async function* streamChat(
+export async function* streamChat(
     cfg: Config,
     apiKey: string | undefined,
     prepared: PreparedPrompt,
@@ -94,7 +97,7 @@ async function* streamChat(
  *   {"model":"...","response":"token","done":false}
  *   {"model":"...","response":"","done":true,"done_reason":"stop"}
  */
-async function* streamOllamaNative(
+export async function* streamOllamaNative(
     cfg: Config,
     _apiKey: string | undefined,
     prepared: PreparedPrompt,
@@ -156,7 +159,7 @@ export function endpointFor(apiEndpoint: string, apiStyle: ApiStyle): string {
     return `${base}/v1/chat/completions`;
 }
 
-function stripTrailingPath(url: string): string {
+export function stripTrailingPath(url: string): string {
     // Strip a known full path so the caller can re-append the one it wants.
     url = url.replace(/\/v1\/chat\/completions\/?$/, '');
     url = url.replace(/\/api\/generate\/?$/, '');
@@ -167,7 +170,7 @@ function stripTrailingPath(url: string): string {
 
 /* ---------- SSE (OpenAI chat completions) ---------- */
 
-async function* parseSse(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+export async function* parseSse(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
     const reader = body.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -202,7 +205,7 @@ async function* parseSse(body: ReadableStream<Uint8Array>): AsyncGenerator<strin
 
 /* ---------- JSON Lines (Ollama native) ---------- */
 
-async function* parseOllamaJsonl(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+export async function* parseOllamaJsonl(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
     const reader = body.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -234,7 +237,7 @@ async function* parseOllamaJsonl(body: ReadableStream<Uint8Array>): AsyncGenerat
 
 /* ---------- filter pipeline (shared) ---------- */
 
-function applyFilters(input: AsyncIterable<string>): AsyncGenerator<string> {
+export function applyFilters(input: AsyncIterable<string>): AsyncGenerator<string> {
     let s = stopOnStopToken(input, STOP_TOKENS);
     let lines$ = splitLines(s);
     lines$ = stopAtRepeatingLines(lines$);
@@ -242,7 +245,7 @@ function applyFilters(input: AsyncIterable<string>): AsyncGenerator<string> {
     return joinLines(lines$);
 }
 
-async function* stopOnStopToken(
+export async function* stopOnStopToken(
     input: AsyncIterable<string>,
     tokens: string[],
 ): AsyncGenerator<string> {
@@ -307,7 +310,7 @@ async function* stopOnStopToken(
     if (start < buf.length) yield buf.slice(start);
 }
 
-async function* splitLines(input: AsyncIterable<string>): AsyncGenerator<string> {
+export async function* splitLines(input: AsyncIterable<string>): AsyncGenerator<string> {
     let buf = '';
     for await (const chunk of input) {
         buf += chunk;
@@ -318,7 +321,7 @@ async function* splitLines(input: AsyncIterable<string>): AsyncGenerator<string>
     if (buf.length > 0) yield buf;
 }
 
-async function* stopAtRepeatingLines(
+export async function* stopAtRepeatingLines(
     input: AsyncIterable<string>,
 ): AsyncGenerator<string> {
     let prev: string | undefined;
@@ -335,7 +338,7 @@ async function* stopAtRepeatingLines(
     }
 }
 
-async function* noDoubleNewLine(
+export async function* noDoubleNewLine(
     input: AsyncIterable<string>,
 ): AsyncGenerator<string> {
     let prevWasBlank = false;
@@ -348,7 +351,7 @@ async function* noDoubleNewLine(
     }
 }
 
-async function* joinLines(input: AsyncIterable<string>): AsyncGenerator<string> {
+export async function* joinLines(input: AsyncIterable<string>): AsyncGenerator<string> {
     let first = true;
     for await (const line of input) {
         if (!first) yield '\n';

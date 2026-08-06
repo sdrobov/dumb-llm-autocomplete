@@ -3,19 +3,19 @@
 # Requires the `code` CLI on PATH (VS Code → Cmd+Shift+P → "Shell Command: Install 'code' command in PATH").
 #
 # Usage:
-#   ./scripts/dev.sh           # build + smoke + launch
-#   ./scripts/dev.sh --no-smoke
+#   ./scripts/dev.sh           # build + test + launch
+#   ./scripts/dev.sh --no-test # build + launch
 #   ./scripts/dev.sh --no-launch   # build only
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-run_smoke=1
+run_test=1
 run_launch=1
 for arg in "$@"; do
     case "$arg" in
-        --no-smoke)  run_smoke=0 ;;
+        --no-test)   run_test=0 ;;
         --no-launch) run_launch=0 ;;
         -h|--help)
             sed -n '2,9p' "$0"
@@ -27,9 +27,9 @@ done
 echo "==> tsc"
 npm run build
 
-if [ "$run_smoke" -eq 1 ]; then
-    echo "==> smoke"
-    npm run smoke
+if [ "$run_test" -eq 1 ]; then
+    echo "==> test"
+    npm test
 fi
 
 if [ "$run_launch" -eq 1 ]; then

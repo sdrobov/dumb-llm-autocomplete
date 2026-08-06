@@ -80,10 +80,4 @@ That's the entire onboarding doc.
 
 ---
 
-## License
-
-Pick one that fits your shop when you fork it. The code is small enough to read in an afternoon, which is the point.
-
----
-
 *Built by someone who still believes the best code is the code you wrote yourself — just a little faster.*

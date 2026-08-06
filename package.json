@@ -3,18 +3,48 @@
   "displayName": "Dumb LLM autocomplete",
   "description": "AI-powered inline code completions via any OpenAI-compatible API.",
   "version": "0.1.0",
-  "private": true,
-  "publisher": "local",
+  "publisher": "SergeyDrobov",
+  "license": "MIT",
+  "icon": "icon.png",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Programming Languages",
     "AI"
   ],
+  "keywords": [
+    "ai",
+    "autocomplete",
+    "llm",
+    "ollama",
+    "openai"
+  ],
+  "qna": "marketplace",
+  "preview": true,
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sdrobov/dumb-llm-autocomplete.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sdrobov/dumb-llm-autocomplete/issues"
+  },
+  "homepage": "https://github.com/sdrobov/dumb-llm-autocomplete",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
   "main": "./out/extension.js",
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
   "contributes": {
     "configuration": {
@@ -75,14 +105,18 @@
         },
         "dumbLlmAutocomplete.multiline": {
           "type": "string",
-          "enum": ["always", "never", "auto"],
+          "enum": [
+            "always",
+            "never",
+            "auto"
+          ],
           "default": "auto",
           "description": "When to ask the model for a multi-line completion. 'auto' skips mid-expression (e.g. after '.' or '(') and only asks multi-line at the start of a statement."
         },
         "dumbLlmAutocomplete.useCache": {
           "type": "boolean",
           "default": true,
-          "description": "Cache completions to SQLite by file prefix. Speeds up re-requests when the user types the start of an earlier completion."
+          "description": "Cache completions to a local file by file prefix. Speeds up re-requests when the user types the start of an earlier completion."
         },
         "dumbLlmAutocomplete.debug": {
           "type": "boolean",
@@ -91,7 +125,10 @@
         },
         "dumbLlmAutocomplete.apiStyle": {
           "type": "string",
-          "enum": ["openai-compatible", "ollama-native"],
+          "enum": [
+            "openai-compatible",
+            "ollama-native"
+          ],
           "default": "openai-compatible",
           "description": "Appends either `/v1/chat/completions` (openai-compatible, default) or `/api/generate` (ollama-native) to apiEndpoint. `ollama-native` is required for FIM tokens on Ollama-served models like qwen2.5-coder — the OpenAI-compat endpoint ignores FIM markers."
         },
@@ -124,19 +161,21 @@
     "build": "tsc -p .",
     "watch": "tsc -p . --watch",
     "package": "vsce package",
-    "lint": "tsc --noEmit",
-    "smoke": "tsc -p test && node out_test/test/smoke.js",
+    "lint": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "dev": "./scripts/dev.sh",
     "dev:build": "./scripts/dev.sh --no-launch"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
-    "typescript": "^5.4.0"
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.1",
     "diff": "^9.0.0"
   }
 }

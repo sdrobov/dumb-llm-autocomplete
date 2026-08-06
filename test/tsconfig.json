@@ -1,15 +1,9 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "module": "Node16",
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "outDir": "../out_test",
+    "noEmit": true,
     "rootDir": "..",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node16"
+    "types": ["node"]
   },
-  "include": ["./smoke.ts", "../src/**/*.ts"],
-  "exclude": ["../out", "../node_modules", "../out_test"]
+  "include": ["unit/**/*.ts", "../src/**/*.ts"]
 }

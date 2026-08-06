@@ -59,6 +59,17 @@ class InlineProvider implements vscode.InlineCompletionItemProvider {
         // typing settles so VS Code can display the eventual result.
         if (context.triggerKind !== vscode.InlineCompletionTriggerKind.Invoke) {
             if (this.debounceTimer) clearTimeout(this.debounceTimer);
+            // Automatic triggers: VS Code cancels in-flight provider promises while
+            // its suggest widget updates, so we can't stream here. Serve a cached
+            // completion immediately; otherwise re-invoke once typing settles.
+            if (cfg.useCache) {
+                const prepared = preparePrompt(document, position, cfg);
+                const cached = LruCache.get().get(prepared.prunedPrefix);
+                if (cached !== undefined && cached.length > 0) {
+                    log(`cache hit: ${JSON.stringify(cached).slice(0, 80)}`);
+                    return [makeItem(document, position, context, prepared, cached)];
+                }
+            }
             this.debounceTimer = setTimeout(() => {
                 this.debounceTimer = undefined;
                 if (!isStillLatest()) return;
@@ -78,15 +89,8 @@ class InlineProvider implements vscode.InlineCompletionItemProvider {
 
         const apiKey = (await this.secrets.get(SECRET_KEY)) ?? undefined;
 
-        // Cache lookup (skip on manually triggered).
-        const cache = LruCache.get();
-        if (cfg.useCache && context.triggerKind !== vscode.InlineCompletionTriggerKind.Invoke) {
-            const cached = cache.get(prepared.prunedPrefix);
-            if (cached !== undefined && cached.length > 0) {
-                log(`cache hit: ${JSON.stringify(cached).slice(0, 80)}`);
-                return [makeItem(document, position, context, prepared, cached)];
-            }
-        }
+        // Invoke = user explicitly asked for a completion → always stream fresh;
+        // the cache is only consulted on Automatic triggers (see above).
 
         if (!isStillLatest()) { log('bail: superseded before stream'); return []; }
         while (this.activeStream) {
@@ -126,7 +130,7 @@ class InlineProvider implements vscode.InlineCompletionItemProvider {
         }
 
         // Cache the cleaned result.
-        if (cfg.useCache) cache.put(prepared.prunedPrefix, cleaned);
+        if (cfg.useCache) LruCache.get().put(prepared.prunedPrefix, cleaned);
 
         log(`${document.languageId} ${prepared.multiline ? 'multi' : 'single'}-line @ L${position.line}:${position.character} → ${JSON.stringify(cleaned).slice(0, 200)}`);
 

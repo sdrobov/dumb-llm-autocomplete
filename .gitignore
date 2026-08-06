@@ -1,6 +1,7 @@
 node_modules/
 out/
 out_test/
+coverage/
 *.vsix
 .DS_Store
 /.vscode
